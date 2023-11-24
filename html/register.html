@@ -17,7 +17,7 @@
         const uniqueId = Math.floor(Math.random() * 1000000);
         document.cookie = `uniqueId=${uniqueId};`;
         const form = document.getElementById('my-form');
-        form.action =`/cv/mar-facial-recognition/conversation/${uniqueId}`;
+        form.action =`/cv/{{chat_name}}/conversation/${uniqueId}`;
         return uniqueId;
     }
     
