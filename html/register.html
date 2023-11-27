@@ -188,12 +188,14 @@
                     </div>
                   </div>
                   <div class="camera">
-                    <video id="video">Video stream not available.</video>
-                    <button id="startbutton">Tomar foto</button>
+                    <video id="video" class="rounded">Video stream not available.</video>
+                    <div class="d-grid gap-2">
+                      <button id="startbutton" type="button" class="btn btn-primary btn-sm">Tomar foto</button>
+                    </div>
                   </div>
                   <canvas id="canvas"> </canvas>
                   <div class="output">
-                    <img id="photo" alt="The screen capture will appear in this box." />
+                    <img id="photo" alt="The screen capture will appear in this box." class="rounded"/>
                   </div>
                 <form id="my-form" method="POST">
                     <div class="form-group mb-3">
