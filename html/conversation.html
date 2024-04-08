@@ -1,8 +1,87 @@
 {% extends 'base.html' %}
 
 {% block script %}
+    
 	<script type="text/javascript" charset="utf-8">
+        // The width and height of the captured photo. We will set the
+        // width to the value defined here, but the height will be
+        // calculated based on the aspect ratio of the input stream.
+    
+        const width = 310; // We will scale the photo width to this
+        let height = 0; // This will be computed based on the input stream
+    
+        // |streaming| indicates whether or not we're currently streaming
+        // video from the camera. Obviously, we start at false.
+    
+        let streaming = false;
+    
+        // The various HTML elements we need to configure or control. These
+        // will be set by the startup() function.
+        function getRandomInt(max) {
+        return Math.floor(Math.random() * max);
+        }
+
+        let video = null;
+        let canvas = null;
+        let photo = null;
+
+        function startup() {
+            video = document.getElementById("video");
+            video.style.display="none";
+            canvas = document.getElementById("canvas");
+            canvas.style.display="none";
+            photo = document.getElementById("photo");
+            photo.style.display="none";
+
+            navigator.mediaDevices
+            .getUserMedia({ video: true, audio: false })
+            .then((stream) => {
+                video.srcObject = stream;
+                video.play();
+            })
+            .catch((err) => {
+                console.error(`An error occurred: ${err}`);
+            });
+
+            video.addEventListener(
+            "canplay",
+            (ev) => {
+                if (!streaming) {
+                height = video.videoHeight / (video.videoWidth / width);
+
+                // Firefox currently has a bug where the height can't be read from
+                // the video, so we will make assumptions if this happens.
+
+                if (isNaN(height)) {
+                    height = width / (4 / 3);
+                }
+
+                video.setAttribute("width", width);
+                video.setAttribute("height", height);
+                canvas.setAttribute("width", width);
+                canvas.setAttribute("height", height);
+                streaming = true;
+                }
+            },
+            false,
+            );
+        }
+
+        function takepicture() {
+            const context = canvas.getContext("2d");
+            if (width && height) {
+                canvas.width = width;
+                canvas.height = height;
+                context.drawImage(video, 0, 0, width, height);
+
+                const data = canvas.toDataURL("image/png");
+                photo.setAttribute("src", data);
+            }
+        }
+
+
         $(document).ready(function(){
+            startup();
             namespace = '{{prefix}}';
             var msgCount = 1;
             var client_id = Date.now()
@@ -37,6 +116,8 @@
             function sendMSG(e) {
                 var msg = String($('#msg_input').val());
                 if(msg.trim().length>0){
+                    takepicture();
+                    verify().then((data) => ws.send(JSON.stringify({'cmd':'verify','vectorStr':data,'client_id':client_id})));
                     ws.send(JSON.stringify({'cmd':'input completed','msg':msg,'client_id':client_id}));
                     showUserMessage(msg,getCurrentTimestamp());
                     $('#msg_input').val('');
@@ -80,6 +161,12 @@
                     document.getElementById('bye_message').removeAttribute('hidden');
                     window.scrollTo(0, document.body.scrollHeight);
 				};
+                //Verify
+                if(data.cmd=="verify"){
+                    if(!data.verification){
+                        window.location.replace("/cv/{{chat_name}}/inicio");
+                    };
+                };
             };
 
             ws.onclose = function(e) {
@@ -96,6 +183,23 @@
                       ws.close();
                     };
         });
+
+        //Verifies the identity of the user every time they send a message
+        async function verify() {
+            const MODEL_URL = '/cv/static/models/weights';
+
+            await faceapi.loadSsdMobilenetv1Model(MODEL_URL);
+            await faceapi.loadFaceLandmarkModel(MODEL_URL);
+            await faceapi.loadFaceRecognitionModel(MODEL_URL);
+
+            let result = await faceapi.detectSingleFace(photo).withFaceLandmarks().withFaceDescriptor();
+            if (result){
+                return Object.values(result.descriptor).toString();
+            }
+            else{
+                return "error";
+            }
+        }
     </script>
 {% endblock %}
 
@@ -130,7 +234,16 @@
             </div>
         </div>
 
-
+<p id="messageOne"></p>
 </div>
+<div class="camera">
+    <video id="video">Video stream not available.</video>
+</div>
+<canvas id="canvas"> </canvas>
+<div class="output">
+    <img id="photo" alt="The screen capture will appear in this box." />
+</div>
+
+  
 
 {% endblock %}

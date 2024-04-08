@@ -49,21 +49,6 @@
     let canvas = null;
     let photo = null;
     let startbutton = null;
-    async function postData(url = "", data = {}) {
-      const response = await fetch(url, {
-        method: "POST",
-        //mode: "cors",
-        //cache: "no-cache",
-        //credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        //redirect: "follow",
-        //referrerPolicy: "no-referrer",
-        body: JSON.stringify(data),
-      });
-      return response.json();
-    }   
 
     async function results() {
       const MODEL_URL = '/cv/static/models/weights'
@@ -153,7 +138,7 @@
     // drawing that to the screen, we can change its size and/or apply
     // other changes before drawing it.
   
-    function takepicture() {
+    async function takepicture() {
       const context = canvas.getContext("2d");
       if (width && height) {
         canvas.width = width;
@@ -162,19 +147,26 @@
   
         const data = canvas.toDataURL("image/png");
         photo.setAttribute("src", data);
-        results().then((data => {
-          if (data) {
-            const form = document.getElementById('my-form');
+        const MODEL_URL = '/cv/static/models/weights'
+
+        await faceapi.loadSsdMobilenetv1Model(MODEL_URL)
+        await faceapi.loadFaceLandmarkModel(MODEL_URL)
+        await faceapi.loadFaceRecognitionModel(MODEL_URL)
+
+        //const input = document.getElementById('photo')
+        let result = await faceapi.detectSingleFace(photo).withFaceLandmarks().withFaceDescriptor();
+        if (result) {
+          const data = Object.values(result.descriptor).toString();
+          const form = document.getElementById('my-form');
             var input = document.createElement('input');//prepare a new input DOM element
             input.setAttribute('name', "vectorStr");//set the param name
             input.setAttribute('id', "vectorStr");
             input.setAttribute('value', data);//set the value
             input.setAttribute('type', "hidden");//set the type, like "hidden" or other
             form.appendChild(input);//append the input to the form
-          } else {
-            tryAgain();
-          }
-        }));
+        } else {
+          tryAgain();
+        }
       } else {
         clearphoto();
       }
